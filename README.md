@@ -1,6 +1,7 @@
 # envpact (VS Code)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Stars](https://img.shields.io/github/stars/chirag127/envpact-vscode-vsc-ext?style=social)](https://github.com/chirag127/envpact-vscode-vsc-ext/stargazers)
 [![Marketplace](https://img.shields.io/visual-studio-marketplace/v/chirag127.envpact)](https://marketplace.visualstudio.com/items?itemName=chirag127.envpact)
 [![Installs](https://img.shields.io/visual-studio-marketplace/i/chirag127.envpact)](https://marketplace.visualstudio.com/items?itemName=chirag127.envpact)
 
@@ -10,6 +11,8 @@ secrets vault visually inside the editor.
 > Browse projects, sync per-token from the tree view or a dedicated
 > Sync panel, rotate shared secrets, and generate `.env` files
 > without leaving VS Code.
+
+**Live:** https://envpact-vscode-vsc-ext.oriz.in
 
 Part of the [envpact](https://github.com/chirag127/envpact)
 ecosystem. v0.6.0 ships v3.1 UX additions on top of the v3 vault
