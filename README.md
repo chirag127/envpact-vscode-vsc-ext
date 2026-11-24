@@ -1,115 +1,82 @@
 # envpact (VS Code)
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Stars](https://img.shields.io/github/stars/chirag127/envpact-vscode-vsc-ext?style=social)](https://github.com/chirag127/envpact-vscode-vsc-ext/stargazers)
-[![Marketplace](https://img.shields.io/visual-studio-marketplace/v/chirag127.envpact)](https://marketplace.visualstudio.com/items?itemName=chirag127.envpact)
-[![Installs](https://img.shields.io/visual-studio-marketplace/i/chirag127.envpact)](https://marketplace.visualstudio.com/items?itemName=chirag127.envpact)
+> Manage your centralized, serverless secrets vault visually — inside the editor.
 
-VS Code extension for **envpact** — manage your centralized
-secrets vault visually inside the editor.
+[![License](https://img.shields.io/github/license/chirag127/envpact-vscode-vsc-ext?style=flat-square)](./LICENSE)
+[![GitHub stars](https://img.shields.io/github/stars/chirag127/envpact-vscode-vsc-ext?style=flat-square)](https://github.com/chirag127/envpact-vscode-vsc-ext/stargazers)
+[![Last commit](https://img.shields.io/github/last-commit/chirag127/envpact-vscode-vsc-ext?style=flat-square)](https://github.com/chirag127/envpact-vscode-vsc-ext/commits)
+[![Marketplace](https://img.shields.io/visual-studio-marketplace/v/chirag127.envpact?style=flat-square&label=VS%20Code)](https://marketplace.visualstudio.com/items?itemName=chirag127.envpact)
+[![Installs](https://img.shields.io/visual-studio-marketplace/i/chirag127.envpact?style=flat-square)](https://marketplace.visualstudio.com/items?itemName=chirag127.envpact)
 
-> Browse projects, sync per-token from the tree view or a dedicated
-> Sync panel, rotate shared secrets, and generate `.env` files
-> without leaving VS Code.
+**Live site:** https://envpact-vscode-vsc-ext.oriz.in · **GHP landing:** https://chirag127.github.io/envpact-vscode-vsc-ext/ · **Repo:** https://github.com/chirag127/envpact-vscode-vsc-ext
 
-**Live:** https://envpact-vscode-vsc-ext.oriz.in
+⭐ If this is useful, please star the repo — it helps others find it.
 
-Part of the [envpact](https://github.com/chirag127/envpact)
-ecosystem. v0.6.0 ships v3.1 UX additions on top of the v3 vault
-schema (flat, single-environment, per-key timestamps): every
-conflict prompt renders timestamps in BOTH UTC and IST, the Sync
-panel shows IST with UTC in the tooltip, and a new
-`envpact: Sync Global .env` command mirrors every shared secret to
-`~/.envpact/.env`. See [CHANGELOG.md](./CHANGELOG.md).
+Browse projects, sync per-key from a tree view or a dedicated Sync panel, rotate shared secrets, and generate `.env` files without leaving VS Code. Part of the [envpact](https://github.com/chirag127/envpact) ecosystem — the same Git-backed vault the CLI, MCP server, GitHub Action, Python package, and dashboard all read.
+
+## Architecture
+
+```mermaid
+flowchart LR
+  subgraph VSC["VS Code extension host"]
+    ext["extension.ts<br/>(activate + commands)"]
+    sidebar["sidebar.ts<br/>Projects + Shared trees"]
+    panel["syncPanel.ts<br/>Sync webview"]
+    resolver["resolver.ts<br/>shared.KEY + enc:"]
+    envwriter["envwriter.ts<br/>byte-faithful .env"]
+    sync["sync.ts<br/>per-key status"]
+    vault["vault.ts / global-env.ts"]
+    guard["encryption-guard.ts<br/>mask host-side"]
+  end
+  local["~/.envpact/secrets/<br/>secrets.json"]
+  remote["github.com/&lt;you&gt;/envpact-secrets<br/>(PRIVATE)"]
+  target[".env / .env.example.lock<br/>in workspace"]
+
+  ext --> sidebar & panel & sync
+  sync --> resolver --> vault --> local
+  local <-->|git pull/push| remote
+  envwriter --> target
+  sidebar & panel --> guard
+  guard -.->|only masked values reach webview| panel
+```
 
 ## Features
 
-- **Projects sidebar** with per-key status indicators for the active
-  workspace project: ✓ synced, ↑ local_newer, ↓ vault_newer,
-  ⚠ both_diverged, 🆕 local-only / vault-only.
-- **Shared secrets sidebar** with masked encrypted/plain indicators.
-- **Per-token sync** with two surfaces:
-  - **Right-click any key** in the Projects view for `Pull`, `Push`,
-    `Force pull (overwrite local)`, `Force push (overwrite vault)`.
-    Each shows a masked confirmation (first 3 + last 3 chars of the
-    value) before any disk write. When the underlying status is a
-    conflict, the modal also shows a SHARED_SPEC §1.5 conflict block
-    with vault and local timestamps in BOTH UTC and IST; the newer
-    side gets a `(Recommended — newer)` annotation.
-  - **Sync panel** (envpact: Open Sync Panel, or the sync icon in
-    the Projects view title bar): a single-page table with status
-    badges, dual-rendered timestamps (IST shown, UTC in the
-    `title=` tooltip), masked previews, per-row buttons, and bulk
-    "Pull all available" / "Push all available" actions for keys
-    whose status is `local_only` / `vault_only`. Conflict badges
-    grow a small `(newer side: vault)` / `(newer side: local)` hint
-    so you can see at a glance which side to accept.
-- **Global vault `.env`** at `~/.envpact/.env` mirrors every shared
-  secret. Regenerate via `envpact: Sync Global .env` (palette only).
-  The template `~/.envpact/.env.example.global` is auto-created on
-  first sync — edit it to control the order, comments, and which
-  shared keys are mirrored.
-- **`.env.example.lock`** sidecar tracks last-synced state per key
-  for spec-compliant conflict detection.
-- **Status bar** showing the active project + vault status. Click to
-  open the Sync panel.
-- **Byte-faithful `.env` generation**: the rendered file mirrors
-  `.env.example` line-by-line — comments (with leading whitespace),
-  blank lines, key order, CRLF, and trailing-newline-or-not are all
-  preserved verbatim. Missing keys become `# KEY: unresolved`
-  comment lines so you notice.
-- **Command palette** commands for every operation:
-  - `envpact: Generate .env`
-  - `envpact: Initialize Vault`
-  - `envpact: Refresh Vault`
-  - `envpact: Add Project Secret`
-  - `envpact: Add Shared Secret`
-  - `envpact: Rotate Shared Secret`
-  - `envpact: Sync to GitHub Actions`
-  - `envpact: List Projects`
-  - `envpact: Open Sync Panel`
-  - `envpact: Sync Global .env`
-  - `envpact: Pull this key` / `Push this key` / Force variants
+- **Projects sidebar** with per-key status icons for the active workspace project: ✓ synced, ↑ local_newer, ↓ vault_newer, ⚠ both_diverged, 🆕 local-only / vault-only.
+- **Shared secrets sidebar** with masked encrypted / plain indicators.
+- **Per-key sync, two surfaces** — right-click any key for Pull / Push / Force pull / Force push (each shows a masked confirmation before any disk write), or open the **Sync panel** for a single-page table with status badges, dual-rendered timestamps, masked previews, per-row buttons, and bulk "Pull/Push all available".
+- **Timestamp dual-render** — every conflict prompt shows both UTC and IST (`Asia/Kolkata`, fixed regardless of machine timezone); the newer side is annotated `(Recommended — newer)`.
+- **Global vault `.env`** at `~/.envpact/.env` mirrors every shared secret; regenerate via `envpact: Sync Global .env`.
+- **Byte-faithful `.env` generation** — the rendered file mirrors `.env.example` line-by-line: comments, blank lines, key order, CRLF, and trailing newline preserved verbatim. Missing keys become `# KEY: unresolved`.
+- **`.env.example.lock`** sidecar tracks last-synced state per key for spec-compliant conflict detection.
+- **Status bar** showing active project + vault status; click to open the Sync panel.
 
-## Timestamp dual-render (UTC + IST)
+## Tech stack
 
-Every prompt that asks you to choose between two timestamps shows
-both renderings — there are no screenshots to memorise; the format
-is always:
+TypeScript · VS Code Extension API (`^1.85.0`) · webview with strict CSP (`default-src 'none'; script-src 'nonce-…'`) · `@vscode/vsce` for packaging · `tsx` for tests · pnpm.
+
+## Repo structure
 
 ```
-Conflict on KEY = OPENAI_API_KEY (project: my-app, status: vault_newer)
-
-  Vault:  2026-06-19T07:30:00.000Z
-          → 2026-06-19 13:00:00 IST   (Recommended — newer)
-  Local:  2026-06-19T07:25:00.000Z
-          → 2026-06-19 12:55:00 IST
+src/
+  extension.ts         # activate(), command registration
+  sidebar.ts           # Projects + Shared TreeDataProviders
+  syncPanel.ts         # Sync panel webview controller
+  syncPanelHtml.ts     # static webview template (never holds a secret)
+  sync.ts              # per-key sync status computation
+  resolver.ts          # shared.KEY + enc: resolution
+  envwriter.ts         # byte-faithful .env rendering
+  vault.ts             # vault read/write
+  global-env.ts        # ~/.envpact/.env mirror
+  encryption-guard.ts  # host-side value masking
+  timestamps.ts        # UTC + IST dual-render
+  watcher.ts / setup.ts
+resources/             # icons
+scripts/test.mjs       # test runner
+tests/                 # incl. no-secret-bleed canary
 ```
 
-IST is fixed to `Asia/Kolkata` regardless of your machine's local
-timezone. The Sync panel's Last-modified column shows the IST
-rendering inline with the UTC string in a `title=` hover tooltip,
-so two clicks of the same row never produce different formats.
-
-## Per-token sync — what gets shown, what stays hidden
-
-Secret values **never leave the extension host**. Specifically:
-
-- **Tree view leaves** show `KEY = ••••` only.
-- **Confirmation prompts** mask values via `maskValue`: first 3
-  chars + `••••` + last 3 chars (or `••••` for values shorter than
-  8 chars).
-- **Sync panel webview** receives only key names, status enums,
-  ISO timestamps, and the masked preview. It runs under
-  `default-src 'none'; script-src 'nonce-<n>'`. No external resources
-  load. The static template you see if you View Source NEVER contains
-  a secret value — the webview script renders host-supplied state
-  only, with all values pre-masked host-side.
-- **Status bar** never displays secret values.
-- **Tests** include a canary asserting that no fixture value bleeds
-  into the rendered HTML.
-
-## Installation
+## Install
 
 Search "envpact" in the Extensions sidebar, or:
 
@@ -117,38 +84,32 @@ Search "envpact" in the Extensions sidebar, or:
 ext install chirag127.envpact
 ```
 
-## Setup
+Then create a vault if you don't have one: Command Palette → `envpact: Initialize Vault` → **Auto** (creates a private repo via the `gh` CLI). Or from a terminal: `npx envpact-cli --init auto`.
 
-You need an envpact vault. If you don't have one yet:
+## Build from source
 
-1. Open Command Palette → `envpact: Initialize Vault`
-2. Choose **Auto** to create a new private repo via gh CLI.
+```bash
+pnpm install
+pnpm run compile   # tsc -p ./
+pnpm test          # node scripts/test.mjs
+pnpm run package   # vsce package → .vsix
+```
 
-(Or run `npx envpact-cli --init auto` from your terminal.)
+## Configuration
 
-## Settings
+Extension settings (Settings UI or `settings.json`). No secret values are ever stored here — only behaviour.
 
-| Setting | Default | Description |
-| :--- | :--- | :--- |
-| `envpact.autoPullOnGenerate` | `true` | Pull the vault repo before generating `.env`. |
-| `envpact.exampleFile` | `""` | Workspace-relative path of the `.env.example` to use. |
-| `envpact.outputFile` | `""` | Workspace-relative path of the target `.env`. |
-| `envpact.writeMode` | `merge` | `ask` / `merge` / `overwrite` / `dry-run`. |
-| `envpact.autoSyncOnSave` | `true` | Refresh status indicators on `.env` save. |
+| Setting | Purpose |
+| :--- | :--- |
+| `envpact.autoPullOnGenerate` | Pull the vault repo before generating `.env`. |
+| `envpact.exampleFile` | Workspace-relative path of the `.env.example` to use as the spec. |
+| `envpact.outputFile` | Workspace-relative path of the target `.env` file to write. |
+| `envpact.writeMode` | Existing-file handling: `ask` / `merge` / `overwrite` / `dry-run`. |
+| `envpact.autoSyncOnSave` | Refresh sync-status indicators when a `.env` is saved. |
 
-## Migration from v0.5.0
+## Security note
 
-v0.6.0 is a drop-in replacement. v3.1 is purely additive UX — the
-vault format on disk is unchanged. Until you run the new
-`envpact: Sync Global .env` command, nothing in `~/.envpact/` is
-touched.
-
-## Migration from v0.4.0
-
-v0.5.0 dropped environments and changed the vault schema to v3. v1/v2
-vaults auto-upgrade in memory on first read; the on-disk file is
-rewritten only on mutation. Make a backup branch in your vault repo
-BEFORE upgrading if you want to keep per-environment history.
+No secrets in this repo. Secret values **never leave the extension host**: tree leaves show `KEY = ••••`, confirmation prompts mask via `maskValue` (first 3 + last 3 chars), and the Sync-panel webview receives only key names, status enums, ISO timestamps, and pre-masked previews under a strict CSP. Tests include a canary asserting no fixture value bleeds into rendered HTML. Vault trust root = "keep the vault repo private"; `sops`+`age` encryption is opt-in per secret; `PUBLIC_*` values are client-only.
 
 ## Compatibility with the rest of envpact
 
@@ -160,12 +121,18 @@ BEFORE upgrading if you want to keep per-environment history.
 | envpact-vscode (this) | ✓ | ✓ | ✓ |
 | envpact-action (CI/CD) | ✓ (read-only) | — | — |
 
+## Part of the oriz family
+
+One of ~80 sites and tools in the [oriz](https://blog.oriz.in) family by Chirag Singhal — hosted **$0 on the Cloudflare free tier** (the landing site; the extension itself is client-side). Siblings: the [envpact](https://github.com/chirag127/envpact) monorepo · [ghosttyper-bs-ext](https://github.com/chirag127/ghosttyper-bs-ext) (another 100%-client-side extension).
+
+## Contributing
+
+PRs welcome; open an issue first for large changes. Conventional commits are the changelog. See [CHANGELOG.md](./CHANGELOG.md).
+
+## Status
+
+Stable — published on the VS Code Marketplace and Open VSX (v0.6.0, v3.1 UX on the v3 flat vault schema).
+
 ## License
 
-MIT © Chirag Singhal — see [LICENSE](./LICENSE).
-
-## Documentation
-
-- **[Repo docs (`docs/README.md`)](./docs/README.md)** — full API + usage reference for envpact-vscode
-- **[Project umbrella site](https://chirag127.github.io/envpact/)** — overview of all envpact components, security model, quick start
-- **[Live dashboard](https://envpact.oriz.in)** — visual vault management
+MIT © Chirag Singhal — chirag@oriz.in · see [LICENSE](./LICENSE).
